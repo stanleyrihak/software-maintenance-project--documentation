@@ -1,0 +1,5 @@
+flowchart TB
+    D["Legacy device (DS18B20 simulation)"] -- "HTTP, plaintext" --> G["Edge gateway: validation, metrics, ML-KEM client"]
+    G -- "ML-KEM-768 + AES-256-GCM, POST /data/secure" --> C["Cloud service: decryption, storage (SQLite)"]
+    G -. "/metrics" .-> P["Prometheus and Grafana (optional overlay)"]
+    C -. "/metrics" .-> P
