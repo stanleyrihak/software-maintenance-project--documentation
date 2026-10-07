@@ -1,0 +1,16 @@
+# Title-page details and build settings for technical-documentation.pdf.
+title: ML-KEM Legacy Modernization
+subtitle: Technical documentation
+author:
+  - Stanislav Řihák
+  - Roland Budzák
+  - "TODO: Tom's full name"
+  - "TODO: Tiago's full name"
+  - "TODO: Francisca's full name"
+institution: "TODO: check — University of Oulu"
+course: Software Development, Maintenance & Operations (2026)
+version: "TODO: release tag of the submitted code, e.g. v3.2.0"
+repository: https://github.com/Rolko6/Software-Development-and-Maintenance-Project
+date: October 2026
+toc: true
+toc-depth: 2
