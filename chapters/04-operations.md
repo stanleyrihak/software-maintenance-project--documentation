@@ -20,20 +20,15 @@ A change is only accepted when all jobs pass.
 
 Jobs that start containers first generate throwaway ML-KEM keys with `scripts/generate_keys.py`, so no key is ever stored in the repository or in CI settings.
 
-## Continuous delivery and the test environment
+## Deployment to a test environment
 
-> **TODO before submission:** this section describes the planned continuous delivery.
-> It must be updated once the deployment job and script exist, with the actual run results.
+Following the course instructions, the system is not deployed to an online server; deployment is simulated in a test environment that CI creates for every change.
 
-The course instructions rule out an online server, so the test environment is a **clean, isolated environment created from the published images**, in CI and on a team member's machine, rather than a hosted machine:
+The `smoke` and `reliability-smoke` jobs deploy the system into a fresh, isolated environment on a clean CI runner.
+Each run generates its own throwaway keys, starts the services as a separate Compose project with a unique name, and verifies the running system from the outside: encrypted delivery, rejection of plaintext, persistence across restarts, sensor states, and an alert raised and cleared during an outage.
+The results are kept as CI artefacts, and the environment, including its stored data, is removed at the end.
 
-1. **Versioned images.** Pushing a release tag (for example `v3.2.0`) publishes the images with that version as well as `latest`, so a specific version can be deployed and an older one restored.
-2. **Deployment job.** After publishing, a CI job on a fresh runner pulls exactly those images, generates keys, starts them under a separate project name, waits for `/health`, sends one reading through the gateway and confirms that it is stored in the cloud, and then removes the environment.
-   A failed check fails the release.
-3. **Local deployment script.** The same steps as a script, so the test environment can be recreated on any machine with Docker; running it with an earlier version tag is the rollback.
-
-What separates this from development: the images are the published artefacts, not a local build; the environment is created the same way every time; and the deployment is verified automatically.
-It is not production: a single host, no TLS, and keys created by hand.
+When all checks pass on `main`, the `publish` job builds the three images and pushes them to the GitHub Container Registry, so the tested version is available as published images.
 
 ## Health checks, logs and metrics
 

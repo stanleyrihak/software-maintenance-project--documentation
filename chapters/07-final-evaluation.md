@@ -37,10 +37,10 @@
 
 ## Technical debt and risks
 
-**Technical debt.** No sender authentication; timestamp-only replay protection; no key rotation; no range check on stored temperatures; unbounded storage and unpaginated reads; sensor state lost when the gateway restarts; the ML-KEM shared secret used directly as the AES key, where a key-derivation step (HKDF) would bind it to its purpose at almost no cost and is needed for any extension such as encrypted replies; the continuous-delivery part described in *Operations* is not finished; and the evaluation scripts and monitoring overlay added in v3.1.0 are larger than the rest of the system and were merged without a human review.
+**Technical debt.** No sender authentication; timestamp-only replay protection; no key rotation; no range check on stored temperatures; unbounded storage and unpaginated reads; sensor state lost when the gateway restarts; the ML-KEM shared secret used directly as the AES key, where a key-derivation step (HKDF) would bind it to its purpose at almost no cost and is needed for any extension such as encrypted replies; and the evaluation scripts and monitoring overlay added in v3.1.0 are larger than the rest of the system and were merged without a human review.
 
 **Risks.** The old key pair is public in the repository history, so anything recorded while it was in use must be considered readable.
 AI-generated code merged without review proved to contain a defect that its own tests missed; the same may apply to parts not yet reviewed.
 And the system has only been run on team members' machines, never on a shared or production-like environment.
 
-**For real production use** the project would need: authentication of the gateway (and of devices where possible), a nonce cache or sequence numbers against replay, TLS around the HTTP links, managed key storage and rotation, retention and backup for the database, and deployment to a real environment with monitoring that notifies people.
+**For real production use** the project would need: authentication of the gateway (and of devices where possible), a nonce cache or sequence numbers against replay, TLS around the HTTP links, managed key storage and rotation, retention and backup for the database, and monitoring that notifies people.

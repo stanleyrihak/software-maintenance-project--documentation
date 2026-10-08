@@ -1,29 +1,25 @@
 # System architecture
 
-The system consists of three services: the device, the gateway and the cloud.
-Each lives in its own directory of the repository and runs in its own Docker container.
-This chapter describes what each service does, in the order a reading passes through them.
+This chapter describes how the device, the gateway and the cloud work, in the order a reading passes through them.
+Each service lives in its own directory of the repository (`device/`, `gateway/`, `cloud/`) and runs in its own Docker container.
+All three services are written in Python 3.12.
+The gateway and the cloud are built with the FastAPI web framework and run under the uvicorn server.
+Device is a plain Python script.
 The cryptographic details are in the chapter *ML-KEM integration*, and the metrics and logs in *Operations*.
 
 ## Overview
 
-All three services are written in Python 3.12.
-The gateway and the cloud are built with the FastAPI web framework and run under the uvicorn server; the device is a plain Python script.
-
-| Service | Code | Endpoints | Role |
-|---------|--------------|------------------------------|--------------------------------------|
-| Device | `device/` | none: it only sends requests | simulates the legacy temperature sensor |
-| Gateway | `gateway/` | `POST /device-data`, `POST /device-status`, `GET /health`, `GET /metrics/` | receives readings, tracks sensor state, encrypts and forwards |
-| Cloud | `cloud/` | `POST /data/secure`, `POST /data`, `GET /data`, `GET /health`, `GET /metrics/` | decrypts, validates and stores readings |
-
-: Services, their code and endpoints.
+![The final system: components and communication paths.](figures/architecture.pdf){width=72%}
 
 One reading travels as follows:
 
-1. The device produces a temperature and sends it to the gateway as plaintext JSON.
+1. Every five seconds the device produces a temperature and sends it to the gateway as plaintext JSON, exactly as the legacy sensor would.
 2. The gateway validates it, updates the sensor's state, encrypts it and sends it to the cloud.
 3. The cloud decrypts it, checks it again and commits it to its database.
 4. The cloud's confirmation is passed back through the gateway to the device.
+
+The original plaintext path into the cloud still exists for clients that have not been migrated, but it is closed unless explicitly enabled.
+The gateway and the cloud expose metrics, which an optional monitoring stack collects, shows in a dashboard and uses to raise alerts.
 
 ## Device
 

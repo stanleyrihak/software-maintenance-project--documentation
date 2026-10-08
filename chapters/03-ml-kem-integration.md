@@ -2,14 +2,14 @@
 
 ## Design, keys and failure behaviour
 
-**Protected link.** ML-KEM protects the link from the gateway to the cloud.
+ML-KEM protects the link from the gateway to the cloud.
 The link from the device to the gateway stays plaintext: the device stands for legacy hardware that cannot be changed, so protection begins at the gateway, which in a real installation would sit next to the sensor on a local network.
 
-**Library.** ML-KEM-768 comes from the `cryptography` package (version 50.0.2), which uses OpenSSL's implementation of FIPS 203.
+ML-KEM-768 comes from the `cryptography` package (version 50.0.2), which uses OpenSSL's implementation of FIPS 203.
 AES-256-GCM comes from the same package.
 No cryptography is implemented in the project itself.
 
-**How one reading is protected.**
+### How one reading is protected
 
 ![Path of one protected reading.](figures/protected-reading.pdf){width=100%}
 
@@ -26,14 +26,18 @@ No cryptography is implemented in the project itself.
 The 32-byte ML-KEM shared secret is used directly as the AES key.
 This is acceptable because the secret is already uniformly random and of the right length; a key-derivation step would add domain separation but no strength.
 
-**Key management.** `scripts/generate_keys.py` creates a key pair and writes it to `.env` with owner-only permissions; it refuses to overwrite an existing file.
+### Key management
+
+`scripts/generate_keys.py` creates a key pair and writes it to `.env` with owner-only permissions; it refuses to overwrite an existing file.
 The private key (a 64-byte seed) is given only to the cloud, the public key only to the gateway.
 The public key is distributed with the deployment rather than fetched at runtime, so an attacker on the network cannot substitute their own key.
 Both services check their key at startup and refuse to start with a missing or malformed one.
 Up to v3.1.0 a key pair was committed in `docker-compose.yml` of the public repository; it is no longer used and must be treated as compromised, because it remains in the Git history.
 There is no automated key rotation: generating new keys and restarting both services replaces them.
 
-**Failure behaviour.** Every rejection is logged and counted in `secure_data_rejected_total` with its reason, so attacks and faults are visible in monitoring.
+### Failure behaviour
+
+Every rejection is logged and counted in `secure_data_rejected_total` with its reason, so attacks and faults are visible in monitoring.
 
 | Problem | Response | Metric reason |
 |---------------------------------|----------|-------------------|
@@ -62,7 +66,7 @@ The migration therefore runs in three steps:
 2. **Cut-over.** When `legacy_data_received_total` stays at zero, set the switch back to `false` (the default) and restart the cloud.
    Attempts are now rejected and visible through `PlaintextIngestionBlocked`.
 3. **Fallback.** If a client still depends on the plaintext path, set the switch to `true` again and restart; no code change or new image is needed.
-   If the encrypted path itself failed, the current gateway could not fall back on its own, because it has no plaintext mode: a full rollback also means running an earlier gateway image, which is what versioned images make possible.
+   If the encrypted path itself failed, the current gateway could not fall back on its own, because it has no plaintext mode: a full rollback also means running an earlier version of the gateway.
 
 The device itself is not part of this migration: it always talks to the gateway, and the gateway always encrypts.
 There is no switch to send plaintext from the gateway to the cloud.
