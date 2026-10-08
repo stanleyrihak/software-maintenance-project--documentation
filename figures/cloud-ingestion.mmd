@@ -1,0 +1,13 @@
+flowchart LR
+    B{"Decrypts to a<br/>JSON object with<br/>a timestamp?"} -- "yes" --> C{"Timestamp<br/>within 30 s?"}
+    C -- "yes" --> D{"Valid<br/>reading?"}
+    D -- "yes" --> E{"Stored in<br/>SQLite?"}
+    E -- "yes" --> R200["200<br/>stored"]
+    B -- "no" --> R400["400<br/>rejected"]
+    C -- "no" --> R401["401<br/>expired"]
+    D -- "no" --> R422["422<br/>invalid"]
+    E -- "no" --> R503["503<br/>storage unavailable"]
+    classDef ok fill:#e6f4ea,stroke:#2e7d32,color:#1a1a1a
+    classDef err fill:#fdecea,stroke:#c62828,color:#1a1a1a
+    class R200 ok
+    class R400,R401,R422,R503 err

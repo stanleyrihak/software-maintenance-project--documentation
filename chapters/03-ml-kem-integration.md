@@ -11,7 +11,7 @@ No cryptography is implemented in the project itself.
 
 **How one reading is protected.**
 
-![Path of one protected reading.](diagrams/protected-reading.pdf){width=100%}
+![Path of one protected reading.](figures/protected-reading.pdf){width=100%}
 
 1. The gateway adds the current time (`timestamp`) to the reading and serialises it to JSON.
 2. `encapsulate(cloud public key)` returns a fresh 32-byte **shared secret** and a 1,088-byte **KEM ciphertext** that only the cloud's private key can open.

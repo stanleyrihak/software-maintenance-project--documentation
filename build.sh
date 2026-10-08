@@ -33,12 +33,12 @@ else
 fi
 
 # Render each Mermaid diagram to a vector PDF when its source is newer.
-for mmd in diagrams/*.mmd; do
+for mmd in figures/*.mmd; do
   [ -e "$mmd" ] || continue
   out="${mmd%.mmd}.pdf"
   if [ ! -e "$out" ] || [ "$mmd" -nt "$out" ]; then
     echo "diagram: $mmd -> $out"
-    npx -y @mermaid-js/mermaid-cli@11 -q -i "$mmd" -o "$out" -c diagrams/mermaid-config.json --pdfFit
+    npx -y @mermaid-js/mermaid-cli@11 -q -i "$mmd" -o "$out" -c figures/mermaid-config.json --pdfFit
   fi
 done
 

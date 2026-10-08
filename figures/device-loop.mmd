@@ -1,0 +1,6 @@
+flowchart LR
+    A["Every 5 seconds:<br/>simulate a reading"] --> B{"Sensor<br/>disconnected?"}
+    B -- "no" --> R["POST /device-data<br/>normal value, error code<br/>or stuck value"]
+    B -- "yes" --> S["POST /device-status<br/>disconnected"]
+    R --> P["Print the response,<br/>wait for the next round"]
+    S --> P

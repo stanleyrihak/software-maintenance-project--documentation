@@ -12,7 +12,7 @@ brew install pandoc typst      # once
 ./build.sh notes.md            # any single Markdown file -> notes.pdf
 ```
 
-Diagrams are written in Mermaid (`diagrams/*.mmd`). `build.sh` turns a changed
+Diagrams are written in Mermaid (`figures/*.mmd`). `build.sh` turns a changed
 diagram into a PDF with `npx @mermaid-js/mermaid-cli`, which needs Node.js and
 downloads a headless browser on first use. The generated diagram PDFs are
 committed, so building without changing a diagram needs only pandoc and typst.
@@ -25,7 +25,7 @@ committed, so building without changing a diagram needs only pandoc and typst.
 | `chapters.txt` | which chapters go into the PDF, and in which order (`#` leaves a line out) |
 | `chapters/NN-*.md` | the documentation, one file per chapter (order and selection set in `chapters.txt`): introduction, baseline analysis, ML-KEM integration, operations, AI-assisted development, critical evaluation and maintenance, final evaluation, appendix |
 | `template/report.typst` | page layout: title page, fonts, colours, header and footer |
-| `diagrams/` | Mermaid sources (`.mmd`) and their rendered PDFs |
+| `figures/` | figures: Mermaid diagram sources (`.mmd`) with their rendered PDFs, and other images such as screenshots |
 | `build.sh` | builds the PDF |
 
 ## Writing
@@ -36,5 +36,6 @@ notes for the authors. Pull before you start and push often; working on
 different chapters avoids merge conflicts. Open `TODO`s are marked in
 `metadata.yaml` and in chapter 4 (continuous delivery).
 
-Insert a diagram with `![Caption.](diagrams/name.pdf){width=60%}` after adding
-`diagrams/name.mmd`.
+Insert a diagram with `![Caption.](figures/name.pdf){width=60%}` after adding
+`figures/name.mmd`. Other images (PNG, JPG, PDF) go into `figures/` too and are
+inserted the same way.

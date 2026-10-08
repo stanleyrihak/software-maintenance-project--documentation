@@ -1,0 +1,12 @@
+flowchart LR
+    B{"Valid<br/>reading?"} -- "yes" --> D{"Room to track<br/>the device?"}
+    D -- "yes" --> F["Count it, update sensor state,<br/>encrypt, send to the cloud"]
+    F --> G{"Stored by<br/>the cloud?"}
+    G -- "yes" --> R200["200<br/>forwarded"]
+    B -- "no" --> R422["422<br/>rejected"]
+    D -- "no" --> R503["503<br/>capacity reached"]
+    G -- "no" --> R502["502<br/>cloud unavailable"]
+    classDef ok fill:#e6f4ea,stroke:#2e7d32,color:#1a1a1a
+    classDef err fill:#fdecea,stroke:#c62828,color:#1a1a1a
+    class R200 ok
+    class R422,R503,R502 err

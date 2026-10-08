@@ -19,7 +19,7 @@ The realistic approach is therefore to leave the device unchanged and add protec
 
 ## System overview
 
-![The final system: components and communication paths.](diagrams/architecture.pdf){width=72%}
+![The final system: components and communication paths.](figures/architecture.pdf){width=72%}
 
 The **device** simulates a DS18B20 temperature sensor and sends a reading to the gateway every five seconds, in plaintext, exactly as the legacy device would.
 The **gateway** validates the reading, keeps track of each sensor's state, encrypts the message, and forwards it to the **cloud**, which decrypts it, validates it again and stores it in a database.
