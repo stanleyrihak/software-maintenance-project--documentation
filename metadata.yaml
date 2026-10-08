@@ -4,12 +4,11 @@ subtitle: Technical documentation
 author:
   - Stanislav Řihák
   - Roland Budzák
-  - "TODO: Tom's full name"
-  - "TODO: Tiago's full name"
-  - "TODO: Francisca's full name"
-institution: "TODO: check — University of Oulu"
+  - Tom ...
+  - Tiago ...
+  - Francisca ...
+institution: University of Oulu
 course: Software Development, Maintenance & Operations (2026)
-version: "v3.2.0 (develop, commit 0bb6d84; TODO: tag before submission)"
 repository: https://github.com/Rolko6/Software-Development-and-Maintenance-Project
 date: October 2026
 toc: true
