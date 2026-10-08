@@ -7,39 +7,29 @@ The gateway and the cloud are built with the FastAPI web framework and run under
 Device is a plain Python script.
 The cryptographic details are in the chapter *ML-KEM integration*, and the metrics and logs in *Operations*.
 
-## Overview
-
-![The final system: components and communication paths.](figures/architecture.pdf){width=72%}
-
-One reading travels as follows:
-
-1. Every five seconds the device produces a temperature and sends it to the gateway as plaintext JSON, exactly as the legacy sensor would.
-2. The gateway validates it, updates the sensor's state, encrypts it and sends it to the cloud.
-3. The cloud decrypts it, checks it again and commits it to its database.
-4. The cloud's confirmation is passed back through the gateway to the device.
-
-The original plaintext path into the cloud still exists for clients that have not been migrated, but it is closed unless explicitly enabled.
-The gateway and the cloud expose metrics, which an optional monitoring stack collects, shows in a dashboard and uses to raise alerts.
+![The final system overview.](figures/architecture.pdf){width=72%}
 
 ## Device
 
 The device stands for legacy hardware that cannot be changed.
-It behaves like a DS18B20 temperature sensor, including the ways a real one fails, and it acts only as a client: nothing can send requests to it.
+It behaves like a DS18B20 temperature sensor, including the ways a real one fails, and it acts only as a client (nothing can send requests to it).
 
-### Sending readings
-
-![What the device does every five seconds.](figures/device-loop.pdf){width=85%}
+### Behaviour
 
 Every five seconds the device takes one reading and sends it.
-A reading is sent as `{"device_id": ..., "temperature": ...}` to the gateway's `POST /device-data` with a timeout of five seconds; a disconnected sensor is reported to `POST /device-status` instead.
-There is no retry and no buffer: if the gateway cannot be reached, the reading is lost and the device only prints the error.
+A reading is sent in a format `{"device_id": ..., "temperature": ...}` to the gateway's `POST /device-data` with a timeout of five seconds.
+A disconnected sensor sends to `POST /device-status` instead.
+If the gateway is unavailable, the reading is lost and the device only prints the error.
 For every reading the device prints what it sent and the status code it received.
-With `PYTHONUNBUFFERED=1` in its container these lines appear in `docker compose logs device` as they happen.
+You can view past logs (prints) via `docker compose logs device`.
 
-### Simulated readings
+![Device behaviour.](figures/device-loop.pdf){width=85%}
 
+### Real-life sensor simulation
+
+The code is trying to emulate behaviour of real sensors.
 The first temperature is a random value between 15 and 30 °C.
-Each following reading changes it by a random step of at most ±0.3 °C, kept within 15–30 °C and rounded to two decimals, so the values drift slowly like a real room temperature.
+Each following reading changes it by a random step of at most ±0.3 °C, kept within 15–30 °C and rounded to two decimals, so the values change slowly like a real room temperature.
 
 For each reading the device draws one random number and decides, with configurable probabilities, which of four things happens:
 
@@ -68,35 +58,18 @@ It is the only service the device talks to, and it is where protection is added 
 
 ### Processing a reading
 
+Every reading goes through four steps.
+First, the gateway checks that the reading has a `device_id` with 1–100 characters and a `temperature` that is a finite number.
+Second, the gateway checks that it can track the device.
+It keeps the state of at most 1,000 devices.
+Third, the gateway updates the sensor's state, adds a `timestamp` with the current time, encrypts it and forwards the message.
+Finally, the gateway waits at most five seconds for the cloud's response and does not retry.
+
 ![What the gateway does with a reading and what the device gets back.](figures/gateway-processing.pdf){width=100%}
-
-A reading is valid if its `device_id` has 1–100 characters and its temperature is a finite number.
-FastAPI checks this before any other step; a `NaN` value is shown as text in the error, because it cannot be written as JSON.
-
-DS18B20 error codes (85.0 and −127.0) are recognised and counted as sensor faults, but the reading is still forwarded like any other.
-
-Before sending, the gateway adds the current time to the reading and encrypts it.
-It waits at most five seconds for the cloud and does not retry; a failed attempt is logged with its full error.
-
-The four possible answers, in detail:
-
-| Situation | The device receives |
-|------------------------------------------------|----------------------------------|
-| the cloud stored the reading | `200` "forwarded", with the cloud's confirmation |
-| the reading is invalid (missing field, `NaN`, wrong `device_id`) | `422` with the validation error |
-| 1,000 devices are already tracked and a new one appears | `503` "Sensor state capacity reached" |
-| the cloud is unreachable, too slow or answers with an error | `502` "Cloud service unavailable" |
-
-: Gateway responses to `POST /device-data`.
-
-### Disconnect reports
-
-`POST /device-status` accepts `{"device_id": ..., "status": "disconnected"}`; no other status is valid.
-The gateway marks the device as disconnected, counts the report, logs a warning and answers `{"status": "recorded"}`.
 
 ### Sensor state
 
-The gateway keeps a small record per device in memory and derives three states from it:
+The gateway keeps a small record per device and derives three states from it. The state is kept in memory only, so it is lost when the gateway restarts:
 
 | State | Set when | Cleared when |
 |-----------------|--------------------------------------|----------------------------------|
@@ -106,86 +79,63 @@ The gateway keeps a small record per device in memory and derives three states f
 
 : Sensor states tracked by the gateway.
 
-The thresholds can be changed with `SENSOR_STUCK_THRESHOLD` (default 3 readings) and `SENSOR_SILENCE_TIMEOUT_SECONDS` (default 30).
-The number of devices in each state is exposed as a metric; "silent" is evaluated whenever the metrics are read, so it changes even when no requests arrive.
-Device IDs are never used as metric labels, so the number of metric series stays the same however many devices there are.
-The state is lost when the gateway restarts, and at most 1,000 devices are tracked (`SENSOR_STATE_MAX_DEVICES`).
-
-### Keys
-
-At startup the gateway reads the cloud's ML-KEM public key from `CLOUD_ML_KEM_PUBLIC_KEY` and refuses to start if it is missing or malformed.
-
-The metrics the gateway records at each of these steps are listed in *Operations*.
-
 ## Cloud
 
-The cloud is the central service that stores readings and serves them.
+The cloud is the storage with a database system that receives readings from the gateway and stores them.
 
 | Endpoint | Purpose |
 |------------------------------|--------------------------------------------------|
-| `POST /data/secure` | receive an encrypted reading from the gateway |
-| `POST /data` | legacy plaintext ingestion; `403` unless explicitly enabled |
-| `GET /data` | return all stored readings |
+| `POST /data/secure` | receives an encrypted sensor reading from the gateway |
+| `POST /data` | receives legacy plaintext sensor reading |
+| `GET /data` | return all stored sensor readings |
 | `GET /health` | answer `{"status": "healthy"}` while the process runs |
-| `GET /metrics/` | expose metrics in the Prometheus format |
+| `GET /metrics/` | expose metrics for Prometheus |
 
 : Cloud endpoints.
 
 ### Encrypted ingestion
 
+On endpoint `POST /data/secure` cloud receives an encrypted reading from the gateway and decrypts it.
+A message is valid if it has a `device_id` string and a finite temperature.
+The cloud does not check the length of `device_id`, nor the temperature range (since gateway already does that).
+The cloud answers `200` only after the reading has been committed to the database.
+
 ![What the cloud does with an encrypted reading and what the gateway gets back.](figures/cloud-ingestion.pdf){width=100%}
 
-`POST /data/secure` receives an encrypted reading from the gateway and decrypts it.
-A reading is valid if it has a `device_id` string and a finite temperature.
-The cloud does not check the length of `device_id`, which the gateway already does, nor the temperature range.
-The cloud answers `200` only after the reading has been committed to the database.
-Every rejection is logged and counted with its reason.
+### Legacy endpoint
 
-### Legacy ingestion
-
-`POST /data` is the original plaintext endpoint, kept for clients that have not been migrated.
-It is controlled by `CLOUD_ALLOW_LEGACY_INGESTION`.
+`POST /data` is the original plaintext endpoint, kept for clients that have not yet migrated.
+It is controlled by `CLOUD_ALLOW_LEGACY_INGESTION` variable.
 With the default `false`, every request is answered with `403`, nothing is stored and the attempt is counted.
 With `true`, the endpoint validates and stores readings like the encrypted path, logs a warning for each one and counts it.
-Any value other than `true` or `false` stops the cloud at startup, so a typo cannot open the plaintext path by accident.
 
 ### Storage
 
 Readings are stored in an SQLite database.
-The database has one table, `readings`, with an increasing `id` and the reading as JSON text.
-Each reading is committed before the cloud answers, so a confirmed reading survives a restart or a recreated container.
-An empty path or an in-memory database is refused at startup, so persistence cannot be switched off by accident.
-If the database cannot be written or read, the cloud answers `503` "Storage unavailable".
-Nothing is ever deleted.
+The database has one table called `readings` with an increasing `id` and the reading as `JSON` text.
+The cloud confirms a reading only after it has been saved, so a confirmed reading is never lost, even when the container restarts.
+If the database cannot be used, the cloud answers `503`.
 
-### Reading the data
+### Reading the saved data
 
-`GET /data` returns all stored readings in the order they were stored:
+Endpoint `GET /data` returns a list of all stored readings in the order they were stored:
 
 ```json
 [{"device_id": "legacy-sensor-001", "temperature": 21.37}, ...]
 ```
 
-It has no paging and no authentication.
-
-### Keys
-
-At startup the cloud reads its ML-KEM private key from `CLOUD_ML_KEM_PRIVATE_KEY` and refuses to start if it is missing or malformed.
-
 ## Deployment
 
-The three services are started together by Docker Compose (`docker-compose.yml`).
-Each has a small image based on `python:3.12-slim`; the gateway and the cloud start `uvicorn` on ports 8000 and 8001, the device runs `python device.py`.
+The three services are started together by Docker Compose (docker-compose.yml), each in its own container.
+Inside Compose they reach each other by name (`http://gateway:8000` and `http://cloud:8001`).
+Compose starts the cloud first, gateway second and the device last, however it does not wait until a service is ready, so the first readings may fail.
+The cloud's database is kept on the Docker volume `cloud-data`, so stored readings survive when the containers are restarted or recreated.
+The gateway gets the cloud's public key to encrypt readings, and the cloud gets the matching private key to decrypt them.
 
-| Service | Published port | Volume | Starts after | Key from `.env` |
-|---------|------|--------------|---------|---------------------------|
-| cloud | 8001 | `cloud-data` mounted at `/data` | — | `CLOUD_ML_KEM_PRIVATE_KEY` |
-| gateway | 8000 | — | cloud | `CLOUD_ML_KEM_PUBLIC_KEY` |
-| device | — | — | gateway | — |
+| Service | Port | Key from `.env` |
+|---------|------|---------------------------|
+| cloud | 8001 | `CLOUD_ML_KEM_PRIVATE_KEY` |
+| gateway | 8000 | `CLOUD_ML_KEM_PUBLIC_KEY` |
+| device | — | — |
 
 : Containers in `docker-compose.yml`.
-
-Inside Compose the services reach each other by name (`http://gateway:8000`, `http://cloud:8001`).
-The start order only means that a container is started after the other one, not that the other one is already answering; until it is, the first readings may fail.
-The keys come from the untracked `.env` file created by `scripts/generate_keys.py`, and Compose refuses to start without them.
-The optional monitoring stack is added with a second Compose file and is described in *Operations*.

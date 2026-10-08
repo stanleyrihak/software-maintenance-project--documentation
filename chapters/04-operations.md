@@ -18,8 +18,6 @@ A change is only accepted when all jobs pass.
 
 : CI jobs.
 
-Jobs that start containers first generate throwaway ML-KEM keys with `scripts/generate_keys.py`, so no key is ever stored in the repository or in CI settings.
-
 ## Deployment to a test environment
 
 Following the course instructions, the system is not deployed to an online server; deployment is simulated in a test environment that CI creates for every change.
@@ -55,6 +53,9 @@ The device prints each reading and the response it received.
 | `legacy_data_received_total` / `legacy_data_rejected_total` | cloud | plaintext readings stored / refused | any (see migration strategy) |
 
 : Metrics and when they matter.
+
+The sensor-state gauges count devices; device IDs are never used as labels, so the number of metric series stays the same however many devices there are.
+`sensor_silent_devices` is evaluated whenever the metrics are read, so it changes even when no requests arrive.
 
 **Monitoring stack (optional).** `docker-compose.monitoring.yml` adds Prometheus (scraping every 15 seconds, 30 days of history), Grafana with a provisioned twelve-panel dashboard, Alertmanager, and a small local "alert inbox" that keeps firing and resolved alerts.
 Nine alert rules cover unavailable services, delivery failures, rejected secure requests, use or blocking of the legacy endpoint, a high sensor-fault rate, and disconnected, stuck or silent sensors.

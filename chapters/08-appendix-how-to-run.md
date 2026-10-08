@@ -44,7 +44,7 @@ GRAFANA_ADMIN_PASSWORD=<choose one> \
 | `CLOUD_ML_KEM_PRIVATE_KEY` | cloud | from `.env` (required) | base64 64-byte ML-KEM-768 seed |
 | `CLOUD_ML_KEM_PUBLIC_KEY` | gateway | from `.env` (required) | base64 1,184-byte ML-KEM-768 public key |
 | `CLOUD_ALLOW_LEGACY_INGESTION` | cloud | `false` | `true` opens plaintext `POST /data`; any other value than `true`/`false` stops the cloud |
-| `CLOUD_DB_PATH` | cloud | `/data/readings.sqlite3` | SQLite file; in-memory databases are refused |
+| `CLOUD_DB_PATH` | cloud | `/data/readings.sqlite3` | SQLite file; an empty path or an in-memory database stops the cloud at startup, so storage cannot be switched off by accident |
 | `CLOUD_URL` | gateway | `http://cloud:8001/data/secure` (set in Compose) | where readings are forwarded |
 | `SENSOR_STUCK_THRESHOLD` | gateway | `3` | identical readings before a sensor counts as stuck |
 | `SENSOR_SILENCE_TIMEOUT_SECONDS` | gateway | `30` | time without contact before a sensor counts as silent |
