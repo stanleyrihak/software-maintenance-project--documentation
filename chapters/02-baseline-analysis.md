@@ -24,8 +24,10 @@ published port): the plaintext baseline answered in a median of **4.75 ms**
 (95th percentile 8.14 ms). Section *Testing and verification* compares all
 versions.
 
-**Weaknesses found in the baseline.** By running the system and reading the
-code we recorded the starting list of problems:
+**Weaknesses in the baseline.** The baseline was deliberately kept minimal, so
+that it was easy to follow and could serve as a clear reference for later
+versions. Its limitations were known and accepted from the start, and they
+became the starting list for the improvements that followed:
 
 - all traffic was plaintext, including the link from the gateway to the cloud;
 - there were no automated tests and no CI pipeline;

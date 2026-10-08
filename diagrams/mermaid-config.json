@@ -1,1 +1,37 @@
-{ "theme": "neutral", "flowchart": { "htmlLabels": false, "curve": "basis" }, "themeVariables": { "fontFamily": "Helvetica Neue, Arial, sans-serif", "fontSize": "15px" } }
+{
+  "theme": "base",
+  "themeVariables": {
+    "fontFamily": "Arial, Helvetica, sans-serif",
+    "fontSize": "15px",
+    "primaryColor": "#eef2f7",
+    "primaryBorderColor": "#1f4e79",
+    "primaryTextColor": "#1a1a1a",
+    "lineColor": "#555555",
+    "actorBkg": "#eef2f7",
+    "actorBorder": "#1f4e79",
+    "actorTextColor": "#1a1a1a",
+    "noteBkgColor": "#fff8e6",
+    "noteBorderColor": "#c9a227",
+    "noteTextColor": "#1a1a1a",
+    "signalColor": "#333333",
+    "signalTextColor": "#1a1a1a",
+    "edgeLabelBackground": "#ffffff"
+  },
+  "flowchart": {
+    "htmlLabels": false,
+    "curve": "basis"
+  },
+  "sequence": {
+    "mirrorActors": false,
+    "noteMargin": 14,
+    "boxMargin": 12,
+    "actorMargin": 70,
+    "messageMargin": 40,
+    "noteFontFamily": "Arial, Helvetica, sans-serif",
+    "messageFontFamily": "Arial, Helvetica, sans-serif",
+    "actorFontFamily": "Arial, Helvetica, sans-serif",
+    "noteFontSize": 15,
+    "messageFontSize": 15,
+    "actorFontSize": 15
+  }
+}

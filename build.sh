@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build PDFs from the Markdown sources in this folder.
-#   ./build.sh               -> technical-documentation.pdf from metadata.yaml + chapters/*.md
-#   ./build.sh sample.md     -> sample.pdf from a single Markdown file
+#   ./build.sh               -> technical-documentation.pdf from metadata.yaml + chapters.txt
+#   ./build.sh notes.md      -> notes.pdf from a single Markdown file
 # Needs: pandoc, typst (brew install pandoc typst) and Node.js for changed diagrams.
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -11,8 +11,23 @@ if [ $# -gt 0 ]; then
   METADATA=()
   OUTPUT="${1%.md}.pdf"
 else
-  # Chapters are joined in file-name order (01-, 02-, ...).
-  SOURCES=(chapters/*.md)
+  # Chapters listed in chapters.txt, in that order; empty lines and lines
+  # starting with # are skipped.
+  SOURCES=()
+  while IFS= read -r line || [ -n "$line" ]; do
+    line="${line%%#*}"                       # drop comments
+    line="$(echo "$line" | xargs)"           # trim spaces
+    [ -z "$line" ] && continue
+    if [ ! -f "$line" ]; then
+      echo "chapters.txt lists '$line', but that file does not exist" >&2
+      exit 1
+    fi
+    SOURCES+=("$line")
+  done < chapters.txt
+  if [ ${#SOURCES[@]} -eq 0 ]; then
+    echo "chapters.txt lists no chapters" >&2
+    exit 1
+  fi
   METADATA=(--metadata-file=metadata.yaml)
   OUTPUT="technical-documentation.pdf"
 fi

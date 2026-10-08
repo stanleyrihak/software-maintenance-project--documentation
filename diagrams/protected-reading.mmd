@@ -3,11 +3,11 @@ sequenceDiagram
     participant G as Gateway
     participant C as Cloud
     D->>G: reading (plaintext)
-    Note over G: validate, update sensor state
-    Note over G: encapsulate(public key)<br/>→ shared secret + KEM ciphertext
-    Note over G: AES-256-GCM encrypt<br/>reading + timestamp
+    Note over G: #nbsp;validate, update sensor state#nbsp;
+    Note over G: #nbsp;encapsulate(public key)#nbsp;<br/>#nbsp;→ shared secret + KEM ciphertext#nbsp;
+    Note over G: #nbsp;AES-256-GCM encrypt#nbsp;<br/>#nbsp;reading + timestamp#nbsp;
     G->>C: kem_ciphertext, nonce, ciphertext
-    Note over C: decapsulate(private key)<br/>→ same shared secret
-    Note over C: decrypt, check timestamp,<br/>validate, store in SQLite
+    Note over C: #nbsp;decapsulate(private key)#nbsp;<br/>#nbsp;→ same shared secret#nbsp;
+    Note over C: #nbsp;decrypt, check timestamp,#nbsp;<br/>#nbsp;validate, store in SQLite#nbsp;
     C-->>G: 200 stored
     G-->>D: 200 forwarded

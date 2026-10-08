@@ -3,3 +3,5 @@
 # Built documents (rebuild with ./build.sh). Diagram PDFs in diagrams/ are
 # kept, so the document builds without the Mermaid tool.
 /*.pdf
+
+.idea/

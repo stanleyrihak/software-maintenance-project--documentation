@@ -8,8 +8,8 @@ The documentation is written in Markdown and built into a PDF.
 
 ```sh
 brew install pandoc typst      # once
-./build.sh                     # metadata.yaml + chapters/*.md -> technical-documentation.pdf
-./build.sh sample.md           # a single Markdown file -> sample.pdf
+./build.sh                     # metadata.yaml + chapters in chapters.txt -> technical-documentation.pdf
+./build.sh notes.md            # any single Markdown file -> notes.pdf
 ```
 
 Diagrams are written in Mermaid (`diagrams/*.mmd`). `build.sh` turns a changed
@@ -22,11 +22,11 @@ committed, so building without changing a diagram needs only pandoc and typst.
 | Path | Purpose |
 |---|---|
 | `metadata.yaml` | title page: title, team, version, date; table of contents settings |
-| `chapters/NN-*.md` | the documentation, one file per chapter, joined in number order: introduction, baseline analysis, ML-KEM integration, operations, AI-assisted development, critical evaluation and maintenance, final evaluation, appendix |
+| `chapters.txt` | which chapters go into the PDF, and in which order (`#` leaves a line out) |
+| `chapters/NN-*.md` | the documentation, one file per chapter (order and selection set in `chapters.txt`): introduction, baseline analysis, ML-KEM integration, operations, AI-assisted development, critical evaluation and maintenance, final evaluation, appendix |
 | `template/report.typst` | page layout: title page, fonts, colours, header and footer |
 | `diagrams/` | Mermaid sources (`.mmd`) and their rendered PDFs |
 | `build.sh` | builds the PDF |
-| `sample.md` | layout sample |
 
 ## Writing
 

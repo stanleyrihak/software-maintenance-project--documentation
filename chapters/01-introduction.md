@@ -30,23 +30,6 @@ for it any more. The realistic approach, and the one taken here, is to leave the
 device unchanged and add protection around it, at the gateway that connects it to
 the cloud.
 
-## Definitions
-
-| Term | Meaning in this document |
-|-----------|----------------------------------------------------------------------|
-| Legacy device | A device whose software cannot be changed; here a simulated DS18B20 temperature sensor. |
-| Edge gateway | The service next to the device that receives its readings and forwards them to the cloud. |
-| Plaintext / ciphertext | Data before / after encryption. |
-| KEM | Key-encapsulation mechanism: with a public key, anyone can create a random shared secret together with an encapsulation (the *KEM ciphertext*); only the holder of the private key can recover the secret from it. |
-| ML-KEM-768 | The post-quantum KEM standardised in FIPS 203, at the security level NIST recommends for general use. |
-| Shared secret | The 32 random bytes both sides end up with after encapsulation and decapsulation; used as the encryption key. |
-| AES-256-GCM | Symmetric authenticated encryption: it encrypts the data and adds a tag, so any change is detected on decryption. |
-| Nonce | "Number used once": a value that must never repeat for the same AES-GCM key. Here 12 random bytes per message. |
-| Replay attack | Recording a valid message and sending it again later. |
-| Legacy ingestion | The original plaintext `POST /data` endpoint of the cloud, kept for clients that are not migrated yet. |
-| CI / CD | Continuous integration (every change is built and tested automatically) / continuous delivery (what passes is published and deployed automatically). |
-| Metric | A number a service exposes on `/metrics` for Prometheus, for example a counter of rejected requests. |
-
 ## System overview
 
 ![The final system: components and communication paths.](diagrams/architecture.pdf){width=72%}
@@ -61,16 +44,16 @@ not been migrated, but it is closed unless explicitly enabled. Both services
 expose metrics; an optional monitoring stack collects them, shows them in a
 dashboard and raises alerts.
 
-### Components
+## Components
 
 The system runs as three containers defined in `docker-compose.yml`. All
 services are written in Python 3.12; the gateway and the cloud use FastAPI.
 
 | Service | Code | Endpoints | Responsibility |
 |---------|------------|--------------------------|----------------------------------------|
-| Device | `device/device.py` | — (client only) | Simulates a DS18B20: a reading drifting between 15 and 30 °C every 5 s; with configurable probabilities a disconnect (reported to `/device-status`), an error code (85 or −127) or a stuck value repeated 3–8 times. |
-| Gateway | `gateway/app/` | `POST /device-data`, `POST /device-status`, `GET /health`, `/metrics` | Validates readings (finite number, `device_id` 1–100 characters), counts DS18B20 error codes, tracks per-device state, encrypts and forwards each reading. |
-| Cloud | `cloud/app/` | `POST /data/secure`, `POST /data` (legacy, off by default), `GET /data`, `GET /health`, `/metrics` | Decrypts and validates readings, stores them in SQLite (`/data/readings.sqlite3` on the `cloud-data` volume), returns stored readings. |
+| Device | `device/` | (client only) | Simulates a DS18B20: a reading drifting between 15 and 30 °C every 5 s; with configurable probabilities a disconnect (reported to `/device-status`), an error code (85 or −127) or a stuck value repeated 3–8 times. |
+| Gateway | `gateway/` | `POST /device-data`, `POST /device-status`, `GET /health`, `/metrics` | Validates readings (finite number, `device_id` 1–100 characters), counts DS18B20 error codes, tracks per-device state, encrypts and forwards each reading. |
+| Cloud | `cloud/` | `POST /data/secure`, `POST /data` (legacy, off by default), `GET /data`, `GET /health`, `/metrics` | Decrypts and validates readings, stores them in SQLite (`/data/readings.sqlite3` on the `cloud-data` volume), returns stored readings. |
 
 : Services, their code and endpoints.
 
