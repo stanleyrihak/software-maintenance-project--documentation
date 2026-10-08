@@ -1,10 +1,7 @@
 # AI-assisted development
 
-LLMs were used throughout the project to explain the assignment, generate code
-and tests, design the ML-KEM integration, write CI and monitoring configuration,
-and review the result. The working rule from the course brief applied to all of
-it: generated output is untrusted until it has been read, tested and checked
-against the running system.
+LLMs were used throughout the project to explain the assignment, generate code and tests, design the ML-KEM integration, write CI and monitoring configuration, and review the result.
+The working rule from the course brief applied to all of it: generated output is untrusted until it has been read, tested and checked against the running system.
 
 | Version | Who | Tools | Used for |
 |------------|------------------|-----------------------------|-----------------------------------|
@@ -18,10 +15,7 @@ against the running system.
 
 : Use of LLMs by version.
 
-The prompts, the AI output and the decisions are recorded for every version:
-for the rewrite in `documentation/phases/` of the code repository, for v3.1.0 in
-`docs/ai/prompts/`, and for the earlier architecture in
-`docs/archive/pre-v3/docs/ai/prompts/`.
+The prompts, the AI output and the decisions are recorded for every version: for the rewrite in `documentation/phases/` of the code repository, for v3.1.0 in `docs/ai/prompts/`, and for the earlier architecture in `docs/archive/pre-v3/docs/ai/prompts/`.
 
 ## Generated artefacts and decisions
 

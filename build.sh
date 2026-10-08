@@ -46,6 +46,9 @@ pandoc "${SOURCES[@]}" ${METADATA[@]+"${METADATA[@]}"} \
   --from markdown \
   --pdf-engine=typst \
   --template=template/report.typst \
+  --citeproc \
+  --bibliography=references.bib \
+  --csl=template/ieee.csl \
   --resource-path=. \
   -o "$OUTPUT"
 

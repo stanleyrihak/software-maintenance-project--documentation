@@ -3,6 +3,7 @@
 
 chapters/00-definitions.md
 chapters/01-introduction.md
+chapters/01b-system-architecture.md
 chapters/02-baseline-analysis.md
 chapters/03-ml-kem-integration.md
 chapters/04-operations.md
@@ -10,3 +11,5 @@ chapters/05-ai-assisted-development.md
 chapters/06-critical-evaluation-and-maintenance.md
 chapters/07-final-evaluation.md
 chapters/08-appendix-how-to-run.md
+
+chapters/99-references.md

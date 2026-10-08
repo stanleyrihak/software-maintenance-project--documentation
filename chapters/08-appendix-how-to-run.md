@@ -1,7 +1,6 @@
 # Appendix A: How to run the project {-}
 
-Requirements: Docker with Compose, and Python 3.12 to generate keys and run the
-tests.
+Requirements: Docker with Compose, and Python 3.12 to generate keys and run the tests.
 
 ```sh
 git clone https://github.com/Rolko6/Software-Development-and-Maintenance-Project.git
@@ -28,8 +27,7 @@ python -m pytest cloud/tests
 python -m pytest tests/tooling
 ```
 
-Optional monitoring (Grafana on http://localhost:3000, Prometheus on
-http://localhost:9090):
+Optional monitoring (Grafana on http://localhost:3000, Prometheus on http://localhost:9090):
 
 ```sh
 GRAFANA_ADMIN_PASSWORD=<choose one> \
