@@ -11,11 +11,13 @@ Each section below gives the goal of the version, what was built, how the LLM wa
 | v2.0.0 | 24 Sep | Tom | ML-KEM with sessions and handshake, tests, CI/CD |
 | v2.1.0 | 28 Sep | Stanislav Řihák | cryptographic metrics, Grafana, CI suites |
 | v2.2.0 | 29 Sep | Roland Budzák | realistic DS18B20 simulation, `NaN` fix |
-| v3.0.0 | 4–5 Oct | Roland Budzák | rewrite from the baseline: per-message ML-KEM |
+| v1.1.0–v3.0.0\* | 4–5 Oct | Roland Budzák | rewrite from the baseline: tests, CI/CD, DS18B20 simulation, per-message ML-KEM, metrics |
 | v3.1.0 | 5 Oct | Tom | SQLite persistence, legacy switch, sensor state, monitoring |
 | v3.2.0 | 7 Oct | Stanislav Řihák | keys out of the repository, OpenSSL ML-KEM, `NaN` fix |
 
 : Versions of the project.
+
+\* Not a Git tag or a single release: five internal phases of the rewrite, reusing version-like labels (see the note below). The phase-by-phase breakdown of who used which tool for what is in the AI-assisted development chapter.
 
 ### The first ML-KEM design (v2)
 

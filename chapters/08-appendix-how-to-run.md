@@ -11,7 +11,10 @@ python scripts/generate_keys.py      # once per machine: ML-KEM keys into .env
 docker compose up --build -d         # start device, gateway and cloud
 
 docker compose ps                    # all three "Up"
-curl http://localhost:8000/health    # {"status":"healthy"}
+curl http://localhost:8000/health    # gateway: {"status":"healthy"}
+curl http://localhost:8001/health    # cloud:   {"status":"healthy"}
+curl http://localhost:8000/metrics/  # gateway Prometheus metrics
+curl http://localhost:8001/metrics/  # cloud Prometheus metrics
 docker compose logs -f device        # a "Sent data ... Response: 200" line every 5 s
 curl http://localhost:8001/data      # stored readings
 

@@ -4,9 +4,9 @@
 
 - **Post-quantum protection on the link that leaves the site.** Readings between gateway and cloud are encrypted with keys established by ML-KEM-768 from an established library, and tampering, wrong keys and old messages are rejected (see the security results).
 - **A design that is hard to get wrong.** One key per message removes session state and with it the nonce-reuse problem that affected v2.
-- **Readable code.** About 1,100 lines of application code, small modules, one responsibility each; every team member can follow a reading from sensor to database.
+- **Readable code.** About 1,000 lines of application code, small modules, one responsibility each; every team member can follow a reading from sensor to database.
 - **Legacy compatibility with a safe default.** The plaintext endpoint still exists for migration, but is closed unless deliberately opened, and every use is visible.
-- **Operations.** Ten CI jobs including end-to-end checks; persistent storage; health checks, logs, metrics without per-device labels, and an optional monitoring stack with tested alert rules.
+- **Operations.** Ten CI jobs including end-to-end checks; basic CD (images published to GHCR on every push to `main` — the full deployment pipeline is still open, see Technical debt); persistent storage; health checks, logs, metrics without per-device labels; and an optional monitoring stack with tested alert rules.
 - **Evidence.** 164 automated tests, security checks against the running system, latency measured with one procedure across four versions, and a recorded decision for each significant AI-generated artefact.
 
 ## Weaknesses and known limitations
@@ -18,7 +18,6 @@
 - **Unauthenticated replies and plaintext device link.** A forged `{"status": "stored"}` would be believed by the gateway; the device-to-gateway link is plaintext by design.
 - **No forward secrecy and no key rotation.** A stolen private key exposes all traffic encrypted with it; replacing keys is a manual step.
 - **Limited validation of values.** The cloud rejects `NaN` and malformed data, but stores physically impossible temperatures (−500 °C was stored), and the gateway forwards DS18B20 error codes as readings while counting them.
-- **Latency per reading is higher** than in the session design (11.4 ms against 3.8 ms median), from per-message encapsulation and synchronous database writes; irrelevant at the current rate, relevant at scale.
 - **Single instance, unbounded storage.** One cloud and one gateway process, no retention limit and no paging on `GET /data`.
 
 ## Key decisions and why
