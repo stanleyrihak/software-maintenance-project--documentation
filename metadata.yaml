@@ -9,7 +9,7 @@ author:
   - "TODO: Francisca's full name"
 institution: "TODO: check — University of Oulu"
 course: Software Development, Maintenance & Operations (2026)
-version: "TODO: release tag of the submitted code, e.g. v3.2.0"
+version: "v3.2.0 (develop, commit 0bb6d84; TODO: tag before submission)"
 repository: https://github.com/Rolko6/Software-Development-and-Maintenance-Project
 date: October 2026
 toc: true

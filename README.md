@@ -22,7 +22,7 @@ committed, so building without changing a diagram needs only pandoc and typst.
 | Path | Purpose |
 |---|---|
 | `metadata.yaml` | title page: title, team, version, date; table of contents settings |
-| `chapters/NN-*.md` | the documentation, one file per chapter, joined in number order |
+| `chapters/NN-*.md` | the documentation, one file per chapter, joined in number order: introduction, baseline analysis, ML-KEM integration, operations, AI-assisted development, critical evaluation and maintenance, final evaluation, appendix |
 | `template/report.typst` | page layout: title page, fonts, colours, header and footer |
 | `diagrams/` | Mermaid sources (`.mmd`) and their rendered PDFs |
 | `build.sh` | builds the PDF |
@@ -30,10 +30,11 @@ committed, so building without changing a diagram needs only pandoc and typst.
 
 ## Writing
 
-Each chapter starts with writing notes in an HTML comment (`<!-- ... -->`):
-what belongs in it and where the material is. Comments are not printed in the
-PDF. Pull before you start and push often; working on different chapters
-avoids merge conflicts.
+The chapters follow the course brief's list of required work, one chapter per
+item. HTML comments (`<!-- ... -->`) are not printed in the PDF and can hold
+notes for the authors. Pull before you start and push often; working on
+different chapters avoids merge conflicts. Open `TODO`s are marked in
+`metadata.yaml` and in chapter 4 (continuous delivery).
 
 Insert a diagram with `![Caption.](diagrams/name.pdf){width=60%}` after adding
 `diagrams/name.mmd`.

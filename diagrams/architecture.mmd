@@ -1,5 +1,6 @@
 flowchart TB
-    D["Legacy device (DS18B20 simulation)"] -- "HTTP, plaintext" --> G["Edge gateway: validation, metrics, ML-KEM client"]
-    G -- "ML-KEM-768 + AES-256-GCM, POST /data/secure" --> C["Cloud service: decryption, storage (SQLite)"]
-    G -. "/metrics" .-> P["Prometheus and Grafana (optional overlay)"]
+    D["Legacy device<br/>DS18B20 simulation"] -- "POST /device-data<br/>POST /device-status<br/>(HTTP, plaintext)" --> G["Edge gateway<br/>validation, sensor state,<br/>ML-KEM encryption"]
+    G -- "POST /data/secure<br/>ML-KEM-768 + AES-256-GCM" --> C["Cloud service<br/>decryption, validation,<br/>SQLite storage"]
+    L["Not-yet-migrated client"] -. "POST /data (plaintext)<br/>403 unless enabled" .-> C
+    G -. "/metrics" .-> P["Optional monitoring<br/>Prometheus, Grafana,<br/>Alertmanager"]
     C -. "/metrics" .-> P
