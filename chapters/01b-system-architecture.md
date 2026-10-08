@@ -79,7 +79,7 @@ FastAPI checks this before any other step; a `NaN` value is shown as text in the
 
 DS18B20 error codes (85.0 and −127.0) are recognised and counted as sensor faults, but the reading is still forwarded like any other.
 
-Before sending, the gateway adds the current time to the reading and encrypts it with a key established by ML-KEM, as described in *ML-KEM integration*.
+Before sending, the gateway adds the current time to the reading and encrypts it.
 It waits at most five seconds for the cloud and does not retry; a failed attempt is logged with its full error.
 
 The four possible answers, in detail:
@@ -139,11 +139,11 @@ The cloud is the central service that stores readings and serves them.
 
 ![What the cloud does with an encrypted reading and what the gateway gets back.](figures/cloud-ingestion.pdf){width=100%}
 
-`POST /data/secure` receives the envelope `{kem_ciphertext, nonce, ciphertext}` from the gateway and decrypts it with the cloud's private key, as described in *ML-KEM integration*.
+`POST /data/secure` receives an encrypted reading from the gateway and decrypts it.
 A reading is valid if it has a `device_id` string and a finite temperature.
 The cloud does not check the length of `device_id`, which the gateway already does, nor the temperature range.
 The cloud answers `200` only after the reading has been committed to the database.
-Every rejection is logged and counted with its reason; *ML-KEM integration* lists the reasons in detail.
+Every rejection is logged and counted with its reason.
 
 ### Legacy ingestion
 
