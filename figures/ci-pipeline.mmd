@@ -1,0 +1,6 @@
+flowchart LR
+    A(["push or<br/>pull request"]) --> C["<b>1. Checks</b><br/>compile check,<br/>unit tests,<br/>image build,<br/>monitoring config"]
+    C --> T["<b>2. Test environments</b><br/>system started from scratch<br/>and checked from outside"]
+    T --> P["<b>3. Publish</b><br/>images to GHCR<br/>(main only)"]
+    classDef ok fill:#e6f4ea,stroke:#2e7d32,color:#1a1a1a
+    class P ok

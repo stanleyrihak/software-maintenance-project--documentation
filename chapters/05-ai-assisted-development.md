@@ -1,49 +1,45 @@
 # AI-assisted development
 
 LLMs were used throughout the project to explain the assignment, generate code and tests, design the ML-KEM integration, write CI and monitoring configuration, and review the result.
-The working rule from the course brief applied to all of it: generated output is untrusted until it has been read, tested and checked against the running system.
+Three tools were used:
 
-| Version | Who | Tools | Used for |
-|------------|------------------|-----------------------------|-----------------------------------|
-| v1.0.0 | Stanislav Řihák, Roland Budzák | ChatGPT (GPT-4o) | understanding the brief, baseline code, versioning plan |
-| v2.0.0 | Tom | Codex; Claude Code (Opus coordinating Sonnet agents) | ML-KEM session design, tests, CI/CD |
-| v2.1.0 | Stanislav Řihák | Claude Code (Sonnet 4.6; review with Opus 5.5) | metrics, Grafana dashboard, CI suites; end-of-version review |
-| v2.2.0 | Roland Budzák | Claude Code (Opus 5.5) | DS18B20 simulation, `NaN` fix |
+| Tool | Used by | Main use |
+|------------------|------------------------------|-----------------------------------------|
+| ChatGPT (GPT-4o) | Stanislav Řihák, Roland Budzák | understanding the brief, the baseline system |
+| Claude Code | Roland Budzák, Stanislav Řihák, Tom | most of the code, tests and CI, reviews |
+| Codex | Tom | the first ML-KEM design, persistence and monitoring (v3.1.0) |
 
-: Use of LLMs by version, before the rewrite.
+: AI tools used in the project.
 
-On 4–5 October the team rewrote the system from the v1.0.0 baseline instead of continuing to patch v2.2.0 (see the critical evaluation).
-The rewrite was built on a branch in small phases, each documented in `documentation/phases/` of the code repository; those phase documents reused the version-like labels v1.1.0–v3.0.0 for convenience.
-**These labels are not Git tags or separate releases.** The whole v2.2.0 codebase was replaced by the rewrite in a single commit, and the project's real version sequence then continued on `main` with v3.1.0.
+The prompts with the AI output and the decisions are recorded in the code repository: `documentation/phases/`.
 
-| Version | Who | Tools | Used for |
-|------------|------------------|-----------------------------|-----------------------------------|
-| v1.1.0 | Roland Budzák | Claude Code | tests |
-| v1.2.0 | Roland Budzák | Claude Code | CI/CD, image publishing |
-| v1.3.0 | Roland Budzák | Claude Code | DS18B20 simulation |
-| v2.0.0 | Roland Budzák | Claude Code | per-message ML-KEM |
-| v3.0.0 | Roland Budzák | Claude Code | metrics |
-| v3.1.0 | Tom | Codex (GPT-based agents) | persistence, legacy switch, sensor state, monitoring, CI evidence |
-| v3.2.0 | Stanislav Řihák | Claude Code (Opus 5.5) | review of v3, key handling, library change, `NaN` fix |
+## How we worked with AI
 
-: Use of LLMs during the rewrite and its continuation on `main`.
+Most work followed the same steps:
 
-The prompts, the AI output and the decisions are recorded for every version: for the rewrite in `documentation/phases/` of the code repository, for v3.1.0 in `docs/ai/prompts/`, and for the earlier architecture in `docs/archive/pre-v3/docs/ai/prompts/`.
+1. We described the task, and the AI proposed a plan and then the code and tests.
+2. We read the proposal, ran the tests and, for larger changes, ran the system in Docker.
+3. We accepted, changed or rejected the output, and recorded the decision with its reason.
 
-## Generated artefacts and decisions
+## Decisions on AI output
 
-The tables above already show that the v2.0.0–v2.2.0 session-based architecture was rewritten rather than patched further; those discarded artefacts are not repeated here.
-This table instead covers the artefacts and decisions behind the code actually in use today: the v1.0.0 baseline, which the rewrite kept; the rewrite's own phases, documented in `documentation/phases/` of the code repository; and its continuation on `main`.
+| What the AI proposed | Decision | Why |
+|------------------------------------------|----------------------|-----------------------------------------|
+| the device / gateway / cloud architecture | accepted | simple and matching the brief |
+| adding ML-KEM already in the first version | rejected | a plain baseline was needed first, to compare against |
+| ML-KEM sessions shared by many readings (v2) | accepted, later dropped | a review found a nonce-reuse bug; the rewrite uses a new key per reading |
+| `kyber-py` as the ML-KEM library | replaced | an educational, not constant-time implementation; OpenSSL is used instead |
+| both ML-KEM keys written into `docker-compose.yml` | replaced | the private key was public in the repository; keys are now generated per machine |
+| no Grafana, to keep the system small | reversed | monitoring was added later, but only as an optional stack |
+| v3.1.0 code merged without review | corrected | a `NaN` temperature could be stored and broke reading the data |
 
-| Artefact | Generated by | Decision | Why / what was found |
-|---------------------|---------------|-------------|--------------------------------------|
-| Baseline architecture, Docker setup, phase-doc versioning (v1.0.0) | ChatGPT (GPT-4o) | accepted, ML-KEM deferred | The device/gateway/cloud split and the `documentation/phases/` versioning scheme were accepted as proposed; AI's suggestion to add ML-KEM in the very first version was deferred to keep an unencrypted, verifiable baseline first. |
-| Test strategy, per-service pytest suites (rewrite phase v1.1.0) | Claude Code | accepted | Characterization tests for the existing baseline; DS18B20 error-sentinel values added to the gateway tests ahead of v1.3.0, so the gap they would expose was already documented. |
-| CI/CD pipeline design (rewrite phase v1.2.0) | Claude Code | accepted | One job per service plus an independent build job; the publish job's branch condition was temporarily widened to verify it without touching `main`, then reverted. |
-| Realistic DS18B20 fault simulation (rewrite phase v1.3.0) | Claude Code | accepted | Device forwards sensor error codes unchanged — validating them stayed the gateway's job, a known gap, not closed here; a stuck-sensor fault mode was added beyond what was asked. |
-| Per-message ML-KEM design (rewrite phase v2.0.0) | Claude Code | accepted, later corrected | Public key pre-shared at deploy time instead of fetched, closing a MITM window in the original plan; built test-first against five identified attack vectors. A later review (v3.2.0) found the chosen library, `kyber-py`, was not constant-time. |
-| Cloud/gateway metrics; recommendation against Grafana (rewrite phase v3.0.0) | Claude Code | metrics accepted; Grafana rejected, later reversed | Closed the cloud metrics gap open since v1.0.0 with four targeted counters; recommended against a Prometheus server/Grafana to avoid complexity. Reversed in v3.1.0, which added Prometheus, Grafana and Alertmanager back — but only as an optional `docker-compose.monitoring.yml` overlay, not part of the base system that `docker compose up` runs. |
-| Persistence, legacy switch, sensor state, monitoring (v3.1.0, release on `main`) | Codex | accepted, then corrected | Merged without human review; a later test of the legacy path found that `NaN` was stored and broke every read. |
-| Key generation, OpenSSL ML-KEM, `NaN` fix (v3.2.0, release on `main`) | Claude Code | accepted | Tests first; checked in Docker together with the CI smoke and reliability scripts. |
+: Main decisions on AI-generated output.
 
-: Significant AI-generated artefacts and decisions behind the version currently in use.
+## What we learned
+
+- **AI can quickly make a project too complex.**
+  Each request added more code, and by v2.2.0 the application had grown to 3,102 lines that the team could no longer read and review with confidence.
+  The rewrite brought it down to 464 lines.
+- **Agents with different contexts give conflicting advice.**
+  Each team member worked with their own agent, which knew only part of the project.
+  The same decision could be called acceptable by one agent and a security threat by another: committing the ML-KEM keys was described as "acceptable for a course project" during the rewrite, and as a critical problem in a later review.

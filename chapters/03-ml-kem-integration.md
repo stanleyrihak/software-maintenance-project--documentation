@@ -2,6 +2,7 @@
 
 ML-KEM protects the link from the gateway to the cloud.
 The link from the device to the gateway stays plaintext, because the device emulates a piece of hardware that can not be altered.
+Both algorithms used for encryption in this project come from the `cryptography` package (version 50.0.2), which uses OpenSSL's implementation of FIPS 203 [@pycacryptography].
 
 ## How a reading is protected
 
@@ -16,16 +17,14 @@ One reading is then protected in five steps:
 
 
 1. From the cloud's public key and a random value, the gateway uses ML-KEM algorithm to compute a new secret key, called the `shared secret`, and a `KEM ciphertext`.
-2. The gateway encrypts the reading with the `shared secret` using symmetric cipher.
-3. The gateway sends the `KEM ciphertext` and the encrypted reading to the cloud (the `shared secret` itself is never sent).
+2. The gateway encrypts the reading with the `shared secret` using symmetric cipher (in our case AES). As an outcome it gets `ciphertext` and `nonce` value.
+3. The gateway sends the `KEM ciphertext`, `ciphertext` and `nonce` to the cloud (the `shared secret` itself is never sent).
 4. From the `KEM ciphertext` and its `private key`, the cloud computes the same `shared secret`.
-5. The cloud decrypts the reading with the shared secret.
+5. Using `shared secret` and `nonce` the cloud decrypts the `ciphertext` and can finally read the message.
 
 Both sides used the same key (`shared secret`), although the key itself never travelled over the network.
-Unlike key exchange based on RSA or elliptic curves, ML-KEM is designed to stay secure against quantum computers.
 ML-KEM itself is therefore used only to agree on the key.
 It cannot encrypt the reading directly, because it only produces a key and has no message input.
-Both algorithms come from the `cryptography` package (version 50.0.2), which uses OpenSSL's implementation of FIPS 203 [@pycacryptography].
 
 ![Path of one protected reading.](figures/protected-reading.pdf){width=100%}
 
@@ -44,12 +43,12 @@ Every reading it accepts or refuses is logged and counted, so it is always visib
 
 The migration runs in three steps:
 
-1. **Transition.** Open the plaintext endpoint while the clients are moved to the encrypted path one by one.
-2. **Cut-over.** When no plaintext readings arrive any more, close the endpoint again and restart the cloud.
-3. **Fallback.** If a client still turns out to need the plaintext path, open it again; only the setting changes, not the code.
+1. **Transition:** Open the plaintext endpoint while the clients are moving to the encrypted path one by one.
+2. **Cut-over:** When no plaintext readings arrive anymore, close the endpoint and restart the cloud.
+3. **Fallback:** If a client still turns out to need the plaintext path, open it again.
 
 An alert fires in step 1 whenever the plaintext endpoint is used, and in step 2 whenever a client is refused.
-The device is not affected by the migration: it always sends to the gateway, and the gateway always encrypts.
+The device is not affected by the migration, since it always sends message to the gateway and the gateway always encrypts.
 
 ## Threat model and known gaps
 

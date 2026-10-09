@@ -39,3 +39,7 @@ different chapters avoids merge conflicts. Open `TODO`s are marked in
 Insert a diagram with `![Caption.](figures/name.pdf){width=60%}` after adding
 `figures/name.mmd`. Other images (PNG, JPG, PDF) go into `figures/` too and are
 inserted the same way.
+
+`figures/tests.svg` (the pie chart of test counts) is not built from Mermaid:
+Mermaid can only show percentages inside the slices, so the counts were written
+into the SVG by hand. Edit the numbers in the file if the test counts change.

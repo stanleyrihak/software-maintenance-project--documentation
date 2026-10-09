@@ -1,123 +1,87 @@
 # Operations
 
-## Continuous integration
+This chapter describes how the system is built, tested and deployed automatically, and how it can be watched while it runs.
+The results of the tests are evaluated in *Final evaluation*.
 
-The pipeline is defined in `.github/workflows/ci.yml` and runs on every push and pull request.
-A change is only accepted when all jobs pass.
+## Build, test and deployment pipeline
 
-| Job | What it checks |
-|-----------------------------|------------------------------------------------------|
-| `static-checks` | Every Python file compiles. |
-| `test-device`, `test-gateway`, `test-cloud` | The service's unit tests, plus a check that the required libraries import. Results are summarised in the job and fail the build if any test is skipped. |
-| `test-tooling` | Tests for the evaluation and CI helper scripts. |
-| `build` | The Compose configuration is valid and all three images build. |
-| `smoke` | Starts the gateway and cloud in an isolated Compose project and checks encrypted delivery and fault handling end to end. |
-| `monitoring-config` | The monitoring overlay is valid; Prometheus rules pass their unit tests (`promtool`); Alertmanager routing is valid (`amtool`). |
-| `reliability-smoke` | Starts the full stack with monitoring and checks persistence across restarts, rejection of plaintext, sensor states, and that an outage raises and clears an alert. |
-| `publish` | After all of the above, on pushes to `main`: builds the three images and pushes them to the GitHub Container Registry (GHCR). |
+The pipeline runs on GitHub Actions for every push and pull request (`.github/workflows/ci.yml`).
+A change is accepted only when every step passes.
 
-: CI jobs.
+![The three stages of the pipeline.](figures/ci-pipeline.pdf){width=100%}
 
-## Deployment to a test environment
+### Checks
 
-Following the course instructions, the system is not deployed to an online server; deployment is simulated in a test environment that CI creates for every change.
+Every Python file must compile, and each service runs its own unit tests.
+The three Docker images are built, and the configuration of the optional monitoring stack (Prometheus) is validated, including tests of its alert rules.
 
-The `smoke` and `reliability-smoke` jobs deploy the system into a fresh, isolated environment on a clean CI runner.
-Each run generates its own throwaway keys, starts the services as a separate Compose project with a unique name, and verifies the running system from the outside: encrypted delivery, rejection of plaintext, persistence across restarts, sensor states, and an alert raised and cleared during an outage.
-The results are kept as CI artefacts, and the environment, including its stored data, is removed at the end.
+### Test environments
 
-When all checks pass on `main`, the `publish` job builds the three images and pushes them to the GitHub Container Registry, so the tested version is available as published images.
+The system is not deployed to an online server.
+Instead, deployment is simulated: CI starts the system from scratch in an isolated test environment on a clean machine and checks it as a user would.
+Each run generates its own throwaway keys, so no key is ever stored in the repository or in CI.
 
-## Health checks, logs and metrics
+Two such environments are created, because the monitoring stack is optional: the first checks the system as it is normally run, and only the second can check the alerts.
 
-**Health checks.** Both services answer `GET /health` with `{"status": "healthy"}`.
-CI and the evaluation scripts use it to wait for a started service.
+- **Without monitoring:** CI checks that readings are encrypted and stored and that faults are handled.
+- **With monitoring:** CI also checks that stored readings survive a restart, that plaintext is rejected, that sensor states are detected, and that stopping the cloud raises an alert that clears again after recovery.
 
-**Logs.** All services log to standard output (`docker compose logs`).
-The gateway logs each received reading, every forwarding failure with its traceback, and every disconnect report.
-The cloud logs every stored reading, every use or rejection of the legacy endpoint, and every rejected secure request with its reason.
-The device prints each reading and the response it received.
+The results are kept as files attached to the CI run, and the environment, including its data, is removed at the end.
 
-**Metrics.** Both services expose Prometheus metrics on `/metrics/`.
+### Publish
 
-| Metric | Service | Meaning | Worth attention when |
-|--------------------------------------|---------|---------------------------|----------------------|
-| `device_messages_total` | gateway | readings received | it stops increasing |
-| `cloud_forward_attempts_total` / `cloud_forward_failures_total` | gateway | forwarding attempts / failures | failures exceed 5 % |
-| `sensor_fault_readings_total{type}` | gateway | DS18B20 error codes (`power_on_reset` 85, `crc_failure` −127) | more than 20 % of readings |
-| `sensor_read_failures_total`, `sensor_disconnected_devices` | gateway | disconnect reports / devices currently disconnected | any device disconnected |
-| `sensor_suspected_stuck_devices`, `sensor_stuck_episodes_total` | gateway | same value repeated (default three times) | any |
-| `sensor_silent_devices` | gateway | devices without contact for 30 s | any |
-| `secure_data_received_total` | cloud | readings stored through the encrypted path | it stops increasing |
-| `secure_data_rejected_total{reason}` | cloud | rejected encrypted requests by reason | any, especially `decryption_failed` |
-| `legacy_data_received_total` / `legacy_data_rejected_total` | cloud | plaintext readings stored / refused | any (see migration strategy) |
+After all other steps have passed on the `main` branch, the three images are pushed to the GitHub Container Registry (GHCR), so the tested version is available as published images.
 
-: Metrics and when they matter.
+## Monitoring
 
-The sensor-state gauges count devices; device IDs are never used as labels, so the number of metric series stays the same however many devices there are.
-`sensor_silent_devices` is evaluated whenever the metrics are read, so it changes even when no requests arrive.
+### Health checks and logs
 
-**Monitoring stack (optional).** `docker-compose.monitoring.yml` adds Prometheus (scraping every 15 seconds, 30 days of history), Grafana with a provisioned twelve-panel dashboard, Alertmanager, and a small local "alert inbox" that keeps firing and resolved alerts.
-Nine alert rules cover unavailable services, delivery failures, rejected secure requests, use or blocking of the legacy endpoint, a high sensor-fault rate, and disconnected, stuck or silent sensors.
-The rules have unit tests run by `promtool` in CI.
-All monitoring ports are bound to the local machine only.
+Both the gateway and the cloud answer `GET /health` with `{"status": "healthy"}` while they run.
+CI uses this to wait until a started service is ready.
 
-## Testing and verification
+All services write their logs to the standard output, where `docker compose logs` shows them.
+The gateway logs every received reading, every failure to reach the cloud and every disconnect report.
+The cloud logs every stored reading, every use of the plaintext endpoint and every rejected encrypted request with its reason.
 
-**Automated tests.** Each service has its own `pytest` suite, run separately because the gateway and the cloud both name their package `app`.
-At commit `0bb6d84` (7 October) all 164 tests pass:
+### Metrics and alerts
 
-| Suite | Tests | Covers |
-|-------------|------:|--------------------------------------------------------------|
-| device | 9 | the simulated sensor (drift, error codes, stuck values, disconnects) and sending |
-| gateway | 50 | validation, error codes, sensor state, metrics, encryption of every forwarded reading, fresh ML-KEM material per reading |
-| cloud | 71 | decryption, tampering with each field, wrong key, stale and malformed payloads, `NaN` on both endpoints, legacy switch, SQLite storage and its failures, metrics |
-| tooling | 34 | the evaluation and CI helper scripts |
+The gateway and the cloud expose metrics in the Prometheus format on `/metrics/`.
+The table lists what is measured and when an alert is raised.
 
-: Test suites.
+| What is watched | Metrics | Alert raised when |
+|--------------------------|--------------------------------------|---------------------------|
+| gateway or cloud down | — | the service cannot be reached for 2 minutes |
+| readings received by the gateway | `device_messages_total` | — |
+| forwarding to the cloud | `cloud_forward_attempts_total`, `cloud_forward_failures_total` | more than 5 % fail for 5 minutes |
+| DS18B20 error codes | `sensor_fault_readings_total` | more than 20 % of readings for 5 minutes |
+| disconnected sensors | `sensor_disconnected_devices`, `sensor_read_failures_total` | a sensor is disconnected for 30 seconds |
+| stuck sensors | `sensor_suspected_stuck_devices`, `sensor_stuck_episodes_total` | a sensor is suspected to be stuck |
+| silent sensors | `sensor_silent_devices` | a sensor stays silent for another 30 seconds |
+| readings stored by the cloud | `secure_data_received_total` | — |
+| rejected encrypted requests | `secure_data_rejected_total` (by reason) | any request is rejected |
+| plaintext endpoint | `legacy_data_received_total`, `legacy_data_rejected_total` | it is used, or a request to it is refused |
 
-Bugs fixed in the later versions received regression tests that were first shown to fail on the old code — for example the three `NaN` tests on the legacy endpoint added in v3.2.0.
+: Metrics and alerts.
 
-**Security and validation checks against the running system.** On 7 October the current code was started with Docker Compose and each case below was sent over real HTTP; "stored" counts the readings of that case found in `GET /data` afterwards.
+### Monitoring stack
 
-| Case | Expected | Actual | Stored |
-|---------------------------------------------------|---------|---------|------|
-| Valid reading through the gateway | 200 | 200 | 1 |
-| Tampered AES ciphertext / KEM ciphertext / nonce | 400 | 400 | 0 |
-| Encrypted for a different public key | 400 | 400 | 0 |
-| Timestamp 60 s old | 401 | 401 | 0 |
-| Decrypts, but is not JSON | 400 | 400 | 0 |
-| Decrypts, temperature missing | 422 | 422 | 0 |
-| Decrypts, temperature `NaN` | 422 | 422 | 0 |
-| `NaN` sent to the gateway | 422 | 422 | 0 |
-| Plaintext `POST /data` with legacy ingestion off | 403 | 403 | 0 |
-| Same encrypted message sent 3 times within 30 s | — | 200, 200, 200 | 3 |
-| Reading encrypted by an outsider with the public key | — | 200 | 1 |
-| −500 °C sent to the gateway | — | 200 | 1 |
-| DS18B20 error code 85 sent to the gateway | — | 200 | 1 |
+The monitoring stack is optional and is started with a second Compose file, `docker-compose.monitoring.yml`.
+It contains Prometheus, which collects the metrics every 15 seconds and keeps them for 30 days.
+Grafana, with a ready-made dashboard and Alertmanager with a small local inbox that keeps the raised and resolved alerts.
+All of it is reachable only from the local machine.
 
-: Security and validation results (7 October, current code).
+## Testing
 
-The first nine rows show the protections working: nothing invalid or tampered was stored, and every rejection appeared in `secure_data_rejected_total` or `legacy_data_rejected_total` with the right reason.
-The last four rows are known limitations, listed in the final evaluation.
-After the checks, recreating the cloud container left all 224 stored readings in place (persistence).
+### Automated tests
 
-**End-to-end checks.** The CI `smoke` and `reliability-smoke` jobs were also run locally on the current code and passed: encrypted delivery, rejection of plaintext, sensor states, persistence of data and monitoring history across restarts, and an outage alert that fired (about 150 seconds after the cloud was stopped) and resolved after recovery.
+Each service has its own test bundle, written with `pytest`.
+In total there are 164 automated tests.
+Every bug fixed in the later versions got a regression test, which was first shown to fail on the old code.
 
-**Latency.** The same procedure was run for four versions on the same machine on 7 October: 200 readings sent from the host to the gateway after 10 warm-up readings, each answered only after the cloud stored it.
+![Number of tests for each part of the system.](figures/tests.svg){width=55%}
 
-| Version | Protection | Storage | Median | 95th percentile |
-|---------|------------------------------------------|--------|-------:|------:|
-| v1.0.0 | none (plaintext) | memory | 4.75 ms | 8.14 ms |
-| v2.2.0 | ML-KEM sessions (OpenSSL), key reused for 5 min | memory | 3.75 ms | 5.37 ms |
-| v3.0.0 | ML-KEM per message (`kyber-py`) | memory | 9.05 ms | 10.39 ms |
-| v3.2.0 | ML-KEM per message (OpenSSL) | SQLite | 11.40 ms | 17.27 ms |
+### Checks of the running system
 
-: Latency of one reading, device-side view.
-
-The session design added no measurable cost: one handshake is shared by many readings.
-Encapsulating per message roughly doubled the latency in v3.0.0, where the pure-Python `kyber-py` library did the work on both sides. v3.2.0 uses the much faster OpenSSL implementation but is slower again; the likely cause is that each reading is now committed to SQLite on disk before the reply.
-This was not measured in isolation.
-At one reading every five seconds, 11 ms is irrelevant; at high message rates, per-message encapsulation and synchronous writes would both need to be reconsidered.
-
-**Not tested.** No load or concurrency tests; no tests on a real network or constrained hardware; no independent test of the ML-KEM implementation itself (the earlier version ran NIST known-answer tests, the current one relies on the OpenSSL implementation); no deployment by a team member who did not write the setup.
+Besides the unit tests, the running system was checked from the outside.
+Tampered, outdated and invalid messages were sent to it over real HTTP, the cloud was restarted to check that stored readings survive, and the latency of one reading was measured for four versions of the system.
+The results are presented in *Final evaluation*.

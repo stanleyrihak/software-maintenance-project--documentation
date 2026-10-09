@@ -1,46 +1,94 @@
 # Final evaluation
 
+This chapter presents the results of the checks and evaluates the final system: its strengths, its weaknesses and the main decisions behind it.
+
+## Results of the checks
+
+### Security and validation
+
+On 7 October the current code was started with Docker Compose, and each case below was sent to it over real HTTP.
+The last column counts how many readings of the case were stored in the cloud afterwards.
+The first eight cases show the protections working: nothing changed, outdated or invalid was stored.
+The last four were accepted; they are known weaknesses, discussed below.
+
+| Case | Answer | Stored |
+|---------------------------------------------------|---------|------|
+| valid reading through the gateway | 200 | 1 |
+| changed KEM ciphertext, nonce or encrypted reading | 400 | 0 |
+| reading encrypted for a different public key | 400 | 0 |
+| timestamp 60 seconds old | 401 | 0 |
+| decrypts, but is not JSON | 400 | 0 |
+| decrypts, but the temperature is missing or `NaN` | 422 | 0 |
+| `NaN` sent to the gateway | 422 | 0 |
+| plaintext reading to the closed plaintext endpoint | 403 | 0 |
+| the same encrypted message sent 3 times within 30 seconds | 200 ×3 | 3 |
+| forged reading: an outsider encrypts their own reading with the public key | 200 | 1 |
+| −500 °C sent to the gateway | 200 | 1 |
+| DS18B20 error code 85 sent to the gateway | 200 | 1 |
+
+: Security and validation results (7 October, current code).
+
+### Latency
+
+The time from sending a reading to the gateway until the reply arrives was measured for four versions on the same machine, with 200 readings each.
+Using a new key for every reading roughly doubled the latency compared with sessions.
+The current version is even slower, even though its OpenSSL implementation of ML-KEM should be faster than the educational library used before.
+The likely cause is the switch from memory to an SQLite database, meaning every reading has to be written to disk before the cloud replies.
+At one reading every five seconds, a latency of about 11 ms has no practical effect.
+
+| Version | Protection | Storage | Median | 95th percentile |
+|---------|------------------------------------------|--------|-------:|------:|
+| v1.0.0 | none (plaintext) | memory | 4.75 ms | 8.14 ms |
+| v2.2.0 | ML-KEM sessions (OpenSSL) | memory | 3.75 ms | 5.37 ms |
+| v3.0.0 | ML-KEM per reading (`kyber-py`) | memory | 9.05 ms | 10.39 ms |
+| v3.2.0 | ML-KEM per reading (OpenSSL) | SQLite | 11.40 ms | 17.27 ms |
+
+: Latency of one reading.
+
 ## Strengths
 
-- **Post-quantum protection on the link that leaves the site.** Readings between gateway and cloud are encrypted with keys established by ML-KEM-768 from an established library, and tampering, wrong keys and old messages are rejected (see the security results).
-- **A design that is hard to get wrong.** One key per message removes session state and with it the nonce-reuse problem that affected v2.
-- **Readable code.** About 1,000 lines of application code, small modules, one responsibility each; every team member can follow a reading from sensor to database.
-- **Legacy compatibility with a safe default.** The plaintext endpoint still exists for migration, but is closed unless deliberately opened, and every use is visible.
-- **Operations.** Ten CI jobs including end-to-end checks; basic CD (images published to GHCR on every push to `main` — the full deployment pipeline is still open, see Technical debt); persistent storage; health checks, logs, metrics without per-device labels; and an optional monitoring stack with tested alert rules.
-- **Evidence.** 164 automated tests, security checks against the running system, latency measured with one procedure across four versions, and a recorded decision for each significant AI-generated artefact.
+The final system was evaluated against the weaknesses of the baseline listed in *Baseline system*.
 
-## Weaknesses and known limitations
+| Area | Baseline (v1.0.0) | Final system (v3.2.0) | Evidence |
+|--------------|------------------|----------------------|----------------------|
+| gateway–cloud link | plaintext | encrypted with ML-KEM-768 | all 7 attacks and invalid inputs rejected, nothing stored |
+| cost of protection | 4.75 ms per reading | 11.4 ms per reading | negligible at one reading every 5 s |
+| tests and CI | manual checks only | 164 automated tests, CI on every change | all tests pass; two test environments per change |
+| validation | very minimal | readings checked in both the gateway and the cloud | `NaN` and malformed readings answered `422`, nothing stored |
+| storage | in-memory list, lost on restart | SQLite on a Docker volume | 224 readings kept after the container was recreated |
+| monitoring | no metrics | metrics, dashboard and 9 alerts | stopping the cloud raised an alert after about 150 s |
 
-- **No sender authentication.** Anyone holding the public key can submit a valid reading for any device (demonstrated).
-  A shared secret or signature for the gateway would be needed.
-- **Replay within 30 seconds.** The same encrypted message is accepted again inside the timestamp window (demonstrated, stored three times).
-  Gateway and cloud clocks must also agree within 30 seconds.
-- **Unauthenticated replies and plaintext device link.** A forged `{"status": "stored"}` would be believed by the gateway; the device-to-gateway link is plaintext by design.
-- **No forward secrecy and no key rotation.** A stolen private key exposes all traffic encrypted with it; replacing keys is a manual step.
-- **Limited validation of values.** The cloud rejects `NaN` and malformed data, but stores physically impossible temperatures (−500 °C was stored), and the gateway forwards DS18B20 error codes as readings while counting them.
-- **Single instance, unbounded storage.** One cloud and one gateway process, no retention limit and no paging on `GET /data`.
+: The baseline compared with the final system.
 
-## Key decisions and why
+## Weaknesses
 
-| Decision | Reason | Trade-off |
-|----------------------|------------------------------------------|------------------------------------|
-| Protect only gateway → cloud | The legacy device cannot be changed; the gateway is the realistic place to add protection. | The local device link stays exposed. |
-| Rebuild instead of patching v2 | v2 was hard to read and review, and its complexity had produced a security bug. | Lost tests and safety nets had to be re-added. |
-| One ML-KEM encapsulation per message | No session state, no nonce counter; each message independent. | 1,088 extra bytes and one encapsulation per reading. |
-| Public key distributed with the deployment | Nothing to intercept or substitute at runtime. | Changing keys means redeploying both services. |
-| Keys generated per machine, never committed | A committed private key had made the encryption worthless. | One extra setup step for every team member. |
-| OpenSSL's ML-KEM instead of `kyber-py` | Maintained, constant-time implementation; suits the brief's "suitable implementation". | Private key format changed; keys regenerated. |
-| Legacy plaintext endpoint off by default | Plaintext must be a deliberate, visible choice. | Old clients need explicit opt-in. |
-| Monitoring stack optional | The base system stays small; operators add monitoring when needed. | Alerts exist only when the overlay runs. |
+None of the following is required by the course brief, but each would matter in real use.
+
+| Weakness | What would fix it |
+|------------------------------------------|----------------------------------------|
+| anyone with the public key can send a forged reading | authentication of the gateway, for example with a signature |
+| a message can be replayed within 30 seconds | remembering recently seen messages, or sequence numbers |
+| the cloud's response is not protected | authenticated responses |
+| storage grows without limit and `GET /data` returns everything | retention rules and paging |
+
+: Weaknesses of the final system.
+
+## Key decisions
+
+| Decision | Why | Cost |
+|------------------------------|--------------------------------------|------------------------------|
+| protect only the gateway–cloud link | the legacy device cannot be changed | the device link stays plaintext |
+| rebuild instead of patching v2 | v2 was hard to review and had a security bug | removed safety nets had to be added back |
+| a new ML-KEM key for every reading | no session state, no nonce counter | latency doubled |
+| ML-KEM from OpenSSL | maintained and constant-time | *none* |
+| plaintext endpoint closed by default | plaintext must be a deliberate choice | old clients must be enabled explicitly |
+| optional monitoring stack | monitoring is added only when needed | system must be tested both with and without it |
 
 : Main design decisions.
 
-## Technical debt and risks
+## Conclusion
 
-**Technical debt.** No sender authentication; timestamp-only replay protection; no key rotation; no range check on stored temperatures; unbounded storage and unpaginated reads; sensor state lost when the gateway restarts; the ML-KEM shared secret used directly as the AES key, where a key-derivation step (HKDF) would bind it to its purpose at almost no cost and is needed for any extension such as encrypted replies; and the evaluation scripts and monitoring overlay added in v3.1.0 are larger than the rest of the system and were merged without a human review.
-
-**Risks.** The old key pair is public in the repository history, so anything recorded while it was in use must be considered readable.
-AI-generated code merged without review proved to contain a defect that its own tests missed; the same may apply to parts not yet reviewed.
-And the system has only been run on team members' machines, never on a shared or production-like environment.
-
-**For real production use** the project would need: authentication of the gateway (and of devices where possible), a nonce cache or sequence numbers against replay, TLS around the HTTP links, managed key storage and rotation, retention and backup for the database, and monitoring that notifies people.
+The final system meets the goals of the project.
+Readings leave the gateway protected by ML-KEM encryption, the legacy device works unchanged, and the whole system is built, tested, deployed and monitored automatically.
+Its main remaining gap is that the cloud cannot tell who sent a reading.
+Closing it would require authenticating the gateway, which the course brief did not ask for, and also it would make the system noticeably more complex.
